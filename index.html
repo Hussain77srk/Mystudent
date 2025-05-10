@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تتبع الرحلات المدرسية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- SheetJS (XLSX) لتصدير بيانات Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                    }
+                }
+            }
+        };
+
+        // الوضع الداكن
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+        
+        * {
+            font-family: 'Tajawal', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold text-center text-primary mb-6">نظام تتبع الرحلات المدرسية</h1>
+        
+        <!-- نموذج إضافة باص جديد -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-primary">إضافة باص جديد</h2>
+            <form id="busForm" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div>
+                    <label for="supervisorName" class="block text-gray-700 dark:text-gray-300 mb-1">اسم المشرفة</label>
+                    <input type="text" id="supervisorName" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                </div>
+                <div>
+                    <label for="busName" class="block text-gray-700 dark:text-gray-300 mb-1">اسم الباص</label>
+                    <input type="text" id="busName" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                </div>
+                <div>
+                    <label for="busNumber" class="block text-gray-700 dark:text-gray-300 mb-1">رقم الحافلة</label>
+                    <select id="busNumber" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                        <option value="">اختر رقم الحافلة</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="totalStudents" class="block text-gray-700 dark:text-gray-300 mb-1">العدد الكلي للطلاب</label>
+                    <input type="number" id="totalStudents" min="0" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                </div>
+                <div>
+                    <label for="absentStudents" class="block text-gray-700 dark:text-gray-300 mb-1">عدد الطلاب الغائبين</label>
+                    <input type="number" id="absentStudents" min="0" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                </div>
+                <div>
+                    <label for="tripDate" class="block text-gray-700 dark:text-gray-300 mb-1">تاريخ الرحلة</label>
+                    <input type="date" id="tripDate" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                </div>
+                <div class="md:col-span-2 lg:col-span-3">
+                    <button type="submit" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md mt-2">إضافة الباص</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- إحصائيات عامة -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+            <h2 class="text-xl font-semibold mb-2 text-primary">إحصائيات الرحلة</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
+                    <p class="text-blue-800 dark:text-blue-200">عدد الباصات المسجلة: <span id="totalBusesCount" class="font-bold">0</span> من 20</p>
+                </div>
+                <div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+                    <p class="text-green-800 dark:text-green-200">إجمالي الطلاب: <span id="totalStudentsCount" class="font-bold">0</span></p>
+                </div>
+                <div class="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
+                    <p class="text-red-800 dark:text-red-200">إجمالي الغائبين: <span id="totalAbsentCount" class="font-bold">0</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- جدول الباصات -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-primary">قائمة الباصات</h2>
+                <div class="flex gap-2">
+                    <div class="relative inline-block">
+                        <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm">تصدير البيانات</button>
+                        <div id="exportDropdown" class="hidden absolute left-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 overflow-hidden">
+                            <button id="exportExcelBtn" class="w-full text-right px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                                <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="#4CAF50"/>
+                                    <path d="M14 2V8H20L14 2Z" fill="#81C784"/>
+                                    <path d="M7 13H17V14.5H7V13Z" fill="white"/>
+                                    <path d="M7 16H17V17.5H7V16Z" fill="white"/>
+                                    <path d="M7 10H17V11.5H7V10Z" fill="white"/>
+                                </svg>
+                                Excel (.xlsx)
+                            </button>
+                            <button id="exportCsvBtn" class="w-full text-right px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                                <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="#607D8B"/>
+                                    <path d="M14 2V8H20L14 2Z" fill="#B0BEC5"/>
+                                    <path d="M12 19H6V14H12V19Z" fill="#FFC107"/>
+                                    <path d="M18 14H12V19H18V14Z" fill="#FF9800"/>
+                                    <path d="M12 9H6V14H12V9Z" fill="#8BC34A"/>
+                                    <path d="M18 9H12V14H18V9Z" fill="#4CAF50"/>
+                                </svg>
+                                CSV (.csv)
+                            </button>
+                        </div>
+                    </div>
+                    <button id="resetBtn" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm">إعادة تعيين</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 dark:bg-gray-700">
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">رقم الحافلة</th>
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">اسم الباص</th>
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">اسم المشرفة</th>
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">العدد الكلي</th>
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">عدد الغائبين</th>
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">عدد الحاضرين</th>
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">التاريخ</th>
+                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="busTableBody">
+                        <tr>
+                            <td colspan="8" class="p-3 text-center border border-gray-300 dark:border-gray-600">لا توجد بيانات متاحة</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // تهيئة Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyA7eNjTXTbVaGkY1rNedSNAKRP3CDRbrw8",
+            authDomain: "ttlatpa.firebaseapp.com",
+            databaseURL: "https://ttlatpa-default-rtdb.firebaseio.com",
+            projectId: "ttlatpa",
+            storageBucket: "ttlatpa.firebasestorage.app",
+            messagingSenderId: "858944555180",
+            appId: "1:858944555180:web:ef441b1c930ba7e6a7b709",
+            measurementId: "G-9E82PESRHV"
+            
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // مرجع قاعدة البيانات
+        const database = firebase.database();
+        const busesRef = database.ref('buses');
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const busForm = document.getElementById('busForm');
+            const busNumberSelect = document.getElementById('busNumber');
+            const busTableBody = document.getElementById('busTableBody');
+            const totalBusesCount = document.getElementById('totalBusesCount');
+            const totalStudentsCount = document.getElementById('totalStudentsCount');
+            const totalAbsentCount = document.getElementById('totalAbsentCount');
+            const exportBtn = document.getElementById('exportBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            // مؤشر تحميل
+            const loadingSpinner = document.createElement('div');
+            loadingSpinner.id = 'loadingSpinner';
+            loadingSpinner.className = 'fixed top-0 left-0 w-full h-full bg-black/50 flex items-center justify-center z-50';
+            loadingSpinner.innerHTML = '<div class="bg-white dark:bg-gray-800 p-5 rounded-lg"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-primary mx-auto mb-2"></div><p class="text-gray-700 dark:text-gray-300">جاري التحميل...</p></div>';
+            
+            function showLoading() {
+                document.body.appendChild(loadingSpinner);
+            }
+            
+            function hideLoading() {
+                const spinner = document.getElementById('loadingSpinner');
+                if (spinner) spinner.remove();
+            }
+            
+            // تهيئة قائمة أرقام الباصات (20 باص)
+            for (let i = 1; i <= 20; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                busNumberSelect.appendChild(option);
+            }
+            
+            // تعيين التاريخ الافتراضي ليكون اليوم
+            document.getElementById('tripDate').valueAsDate = new Date();
+            
+            // متغير لتخزين بيانات الباصات
+            let busData = [];
+            
+            // استمع للتغييرات في قاعدة البيانات وتحديث الواجهة
+            busesRef.on('value', snapshot => {
+                busData = [];
+                snapshot.forEach(childSnapshot => {
+                    const bus = childSnapshot.val();
+                    bus.key = childSnapshot.key;
+                    busData.push(bus);
+                });
+                
+                // ترتيب البيانات حسب رقم الباص
+                busData.sort((a, b) => parseInt(a.busNumber) - parseInt(b.busNumber));
+                
+                updateTable();
+                updateStats();
+                updateBusNumberSelect();
+                hideLoading();
+            });
+            
+            // إضافة باص جديد
+            busForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                showLoading();
+                
+                const busNumber = busNumberSelect.value;
+                const supervisorName = document.getElementById('supervisorName').value;
+                const busName = document.getElementById('busName').value;
+                const totalStudents = parseInt(document.getElementById('totalStudents').value);
+                const absentStudents = parseInt(document.getElementById('absentStudents').value);
+                const tripDate = document.getElementById('tripDate').value;
+                
+                // التحقق من عدم تكرار رقم الباص
+                if (busData.some(bus => bus.busNumber === busNumber)) {
+                    alert('هذا الرقم مستخدم بالفعل! الرجاء اختيار رقم آخر.');
+                    hideLoading();
+                    return;
+                }
+                
+                // التحقق من أن عدد الغائبين لا يتجاوز العدد الكلي
+                if (absentStudents > totalStudents) {
+                    alert('عدد الطلاب الغائبين لا يمكن أن يكون أكبر من العدد الكلي للطلاب!');
+                    hideLoading();
+                    return;
+                }
+                
+                // تنسيق التاريخ
+                const formattedDate = formatDate(tripDate);
+                
+                // إضافة الباص الجديد
+                const newBus = {
+                    busNumber,
+                    busName,
+                    supervisorName,
+                    totalStudents,
+                    absentStudents,
+                    presentStudents: totalStudents - absentStudents,
+                    tripDate,
+                    formattedDate,
+                    timeStamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                
+                // إضافة إلى Firebase
+                busesRef.push(newBus)
+                    .then(() => {
+                        // إعادة تعيين النموذج
+                        busForm.reset();
+                        // تعيين التاريخ الافتراضي ليكون اليوم مرة أخرى
+                        document.getElementById('tripDate').valueAsDate = new Date();
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error("خطأ في إضافة البيانات: ", error);
+                        alert("حدث خطأ أثناء إضافة البيانات. يرجى المحاولة مرة أخرى.");
+                        hideLoading();
+                    });
+            });
+            
+            // حذف باص
+            busTableBody.addEventListener('click', function(e) {
+                if (e.target.classList.contains('delete-btn')) {
+                    if (confirm('هل أنت متأكد من حذف هذا الباص؟')) {
+                        showLoading();
+                        const busKey = e.target.dataset.key;
+                        busesRef.child(busKey).remove()
+                            .then(() => {
+                                hideLoading();
+                            })
+                            .catch(error => {
+                                console.error("خطأ في حذف البيانات: ", error);
+                                alert("حدث خطأ أثناء حذف البيانات. يرجى المحاولة مرة أخرى.");
+                                hideLoading();
+                            });
+                    }
+                }
+            });
+            
+            // تصدير البيانات - القائمة المنسدلة
+            const exportDropdown = document.getElementById('exportDropdown');
+            
+            // فتح وإغلاق قائمة التصدير
+            exportBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                exportDropdown.classList.toggle('hidden');
+            });
+            
+            // إغلاق القائمة عند النقر في أي مكان آخر
+            document.addEventListener('click', function() {
+                if (!exportDropdown.classList.contains('hidden')) {
+                    exportDropdown.classList.add('hidden');
+                }
+            });
+            
+            // منع إغلاق القائمة عند النقر عليها
+            exportDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // تصدير بتنسيق CSV
+            document.getElementById('exportCsvBtn').addEventListener('click', function() {
+                if (busData.length === 0) {
+                    alert('لا توجد بيانات للتصدير!');
+                    return;
+                }
+                
+                // إظهار مؤشر التحميل
+                showLoading();
+                
+                setTimeout(() => {
+                    let csvContent = "رقم الحافلة,اسم الباص,اسم المشرفة,العدد الكلي,عدد الغائبين,عدد الحاضرين,التاريخ\n";
+                    
+                    busData.forEach(bus => {
+                        csvContent += `${bus.busNumber},${bus.busName},${bus.supervisorName},${bus.totalStudents},${bus.absentStudents},${bus.presentStudents},${bus.formattedDate}\n`;
+                    });
+                    
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'بيانات_الرحلة_المدرسية.csv';
+                    link.click();
+                    
+                    hideLoading();
+                }, 500);
+            });
+            
+            // تصدير بتنسيق Excel
+            document.getElementById('exportExcelBtn').addEventListener('click', function() {
+                if (busData.length === 0) {
+                    alert('لا توجد بيانات للتصدير!');
+                    return;
+                }
+                
+                // إظهار مؤشر التحميل
+                showLoading();
+                
+                setTimeout(() => {
+                    try {
+                        // إنشاء مصفوفة البيانات للتصدير
+                        const excelData = [
+                            ['رقم الحافلة', 'اسم الباص', 'اسم المشرفة', 'العدد الكلي', 'عدد الغائبين', 'عدد الحاضرين', 'التاريخ']
+                        ];
+                        
+                        busData.forEach(bus => {
+                            excelData.push([
+                                bus.busNumber,
+                                bus.busName,
+                                bus.supervisorName,
+                                parseInt(bus.totalStudents),
+                                parseInt(bus.absentStudents),
+                                parseInt(bus.presentStudents),
+                                bus.formattedDate || '-'
+                            ]);
+                        });
+                        
+                        // إنشاء ورقة عمل Excel
+                        const ws = XLSX.utils.aoa_to_sheet(excelData);
+                        
+                        // تنسيق الخلايا
+                        const headerStyle = { font: { bold: true }, alignment: { horizontal: 'center' } };
+                        const rowStyle = { alignment: { horizontal: 'center' } };
+                        
+                        // تطبيق أنماط العناوين
+                        ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1'].forEach(cell => {
+                            if (!ws[cell]) ws[cell] = {};
+                            ws[cell].s = headerStyle;
+                        });
+                        
+                        // ضبط عرض الأعمدة
+                        const colWidths = [
+                            { wch: 10 }, // رقم الحافلة
+                            { wch: 20 }, // اسم الباص
+                            { wch: 25 }, // اسم المشرفة
+                            { wch: 12 }, // العدد الكلي
+                            { wch: 15 }, // عدد الغائبين
+                            { wch: 15 }, // عدد الحاضرين
+                            { wch: 25 }  // التاريخ
+                        ];
+                        ws['!cols'] = colWidths;
+                        
+                        // إنشاء كتاب Excel وإضافة ورقة العمل
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'بيانات الرحلة المدرسية');
+                        
+                        // تصدير الملف
+                        XLSX.writeFile(wb, 'بيانات_الرحلة_المدرسية.xlsx');
+                        
+                        hideLoading();
+                    } catch (error) {
+                        console.error("خطأ في تصدير البيانات: ", error);
+                        alert("حدث خطأ أثناء تصدير البيانات. يرجى المحاولة مرة أخرى.");
+                        hideLoading();
+                    }
+                }, 500);
+            });
+            
+            // إعادة تعيين البيانات
+            resetBtn.addEventListener('click', function() {
+                if (confirm('هل أنت متأكد من حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء!')) {
+                    showLoading();
+                    busesRef.remove()
+                        .then(() => {
+                            hideLoading();
+                        })
+                        .catch(error => {
+                            console.error("خطأ في حذف البيانات: ", error);
+                            alert("حدث خطأ أثناء حذف البيانات. يرجى المحاولة مرة أخرى.");
+                            hideLoading();
+                        });
+                }
+            });
+            
+            // تحديث جدول الباصات
+            function updateTable() {
+                if (busData.length === 0) {
+                    busTableBody.innerHTML = '<tr><td colspan="8" class="p-3 text-center border border-gray-300 dark:border-gray-600">لا توجد بيانات متاحة</td></tr>';
+                    return;
+                }
+                
+                busTableBody.innerHTML = '';
+                
+                busData.forEach(bus => {
+                    const row = document.createElement('tr');
+                    row.classList.add('border-b', 'dark:border-gray-700', 'hover:bg-gray-50', 'dark:hover:bg-gray-800/50');
+                    
+                    row.innerHTML = `
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.busNumber}</td>
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.busName}</td>
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.supervisorName}</td>
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.totalStudents}</td>
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.absentStudents}</td>
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.presentStudents}</td>
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.formattedDate || '-'}</td>
+                        <td class="p-3 border border-gray-300 dark:border-gray-600">
+                            <button class="delete-btn bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" data-key="${bus.key}">حذف</button>
+                        </td>
+                    `;
+                    
+                    busTableBody.appendChild(row);
+                });
+            }
+            
+            // تحديث الإحصائيات
+            function updateStats() {
+                totalBusesCount.textContent = busData.length;
+                
+                const totalStudents = busData.reduce((sum, bus) => sum + parseInt(bus.totalStudents), 0);
+                const totalAbsent = busData.reduce((sum, bus) => sum + parseInt(bus.absentStudents), 0);
+                
+                totalStudentsCount.textContent = totalStudents;
+                totalAbsentCount.textContent = totalAbsent;
+            }
+            
+            // تحديث قائمة أرقام الباصات المتاحة
+            function updateBusNumberSelect() {
+                const usedBusNumbers = busData.map(bus => bus.busNumber);
+                
+                // إعادة تعيين القائمة
+                busNumberSelect.innerHTML = '<option value="">اختر رقم الحافلة</option>';
+                
+                for (let i = 1; i <= 20; i++) {
+                    if (!usedBusNumbers.includes(i.toString())) {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = i;
+                        busNumberSelect.appendChild(option);
+                    }
+                }
+            }
+            
+            // تنسيق التاريخ من YYYY-MM-DD إلى تنسيق محلي أكثر وضوحًا
+            function formatDate(dateString) {
+                if (!dateString) return '';
+                
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ar-EG', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+            
+            // عرض مؤشر التحميل عند بدء التطبيق
+            showLoading();
+        });
+    </script>
+</body>
+</html>
