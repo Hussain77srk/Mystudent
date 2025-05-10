@@ -8,11 +8,10 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-    <!-- SheetJS (XLSX) لتصدير بيانات Excel -->
+    <!-- SheetJS (XLSX) لتصدير واستيراد بيانات Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -21,18 +20,6 @@
                 }
             }
         };
-
-        // الوضع الداكن
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.documentElement.classList.add('dark');
-        }
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-            if (event.matches) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-        });
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
@@ -42,39 +29,75 @@
         }
     </style>
 </head>
-<body class="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+<body class="bg-white text-gray-800 min-h-screen">
     <div class="container mx-auto p-4">
         <h1 class="text-3xl font-bold text-center text-primary mb-6">نظام تتبع الرحلات المدرسية</h1>
         
+        <!-- اختيار الأسبوع والأسابيع المؤرشفة -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-primary">إدارة الأسابيع</h2>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div>
+                        <label for="weekSelector" class="block text-gray-700 mb-1">اختر الأسبوع:</label>
+                        <select id="weekSelector" class="border border-gray-300 rounded-md p-2 text-base">
+                            <option value="current">الأسبوع الحالي</option>
+                            <!-- سيتم إضافة الأسابيع المؤرشفة هنا ديناميكيًا -->
+                        </select>
+                    </div>
+                    <button id="archiveWeekBtn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md mt-4">أرشفة الأسبوع الحالي</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- نموذج استيراد بيانات Excel -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <h2 class="text-xl font-semibold text-primary mb-4">استيراد البيانات</h2>
+            <div class="flex flex-wrap gap-4">
+                <div class="flex-grow">
+                    <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full text-base file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90">
+                    <p class="text-sm text-gray-600 mt-1">الرجاء اختيار ملف Excel بالأعمدة التالية: رقم الحافلة، اسم السائق، اسم المشرفة، اسم المنطقة، العدد الكلي للطلاب، عدد الطلاب الغائبين، التاريخ</p>
+                </div>
+                <button id="importExcelBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md">استيراد البيانات</button>
+            </div>
+            <div id="importResult" class="mt-3 hidden"></div>
+        </div>
+        
         <!-- نموذج إضافة باص جديد -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
             <h2 class="text-xl font-semibold mb-4 text-primary">إضافة باص جديد</h2>
             <form id="busForm" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <div>
-                    <label for="supervisorName" class="block text-gray-700 dark:text-gray-300 mb-1">اسم المشرفة</label>
-                    <input type="text" id="supervisorName" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                    <label for="supervisorName" class="block text-gray-700 mb-1">اسم المشرفة</label>
+                    <input type="text" id="supervisorName" class="w-full border border-gray-300 rounded-md p-2 text-base" required>
                 </div>
                 <div>
-                    <label for="busName" class="block text-gray-700 dark:text-gray-300 mb-1">اسم الباص</label>
-                    <input type="text" id="busName" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                    <label for="driverName" class="block text-gray-700 mb-1">اسم السائق</label>
+                    <input type="text" id="driverName" class="w-full border border-gray-300 rounded-md p-2 text-base" required>
                 </div>
                 <div>
-                    <label for="busNumber" class="block text-gray-700 dark:text-gray-300 mb-1">رقم الحافلة</label>
-                    <select id="busNumber" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                    <label for="regionName" class="block text-gray-700 mb-1">اسم المنطقة</label>
+                    <input type="text" id="regionName" class="w-full border border-gray-300 rounded-md p-2 text-base" required>
+                </div>
+                <div>
+                    <label for="busNumber" class="block text-gray-700 mb-1">رقم الحافلة</label>
+                    <select id="busNumber" class="w-full border border-gray-300 rounded-md p-2 text-base" required>
                         <option value="">اختر رقم الحافلة</option>
                     </select>
                 </div>
                 <div>
-                    <label for="totalStudents" class="block text-gray-700 dark:text-gray-300 mb-1">العدد الكلي للطلاب</label>
-                    <input type="number" id="totalStudents" min="0" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                    <label for="totalStudents" class="block text-gray-700 mb-1">العدد الكلي للطلاب</label>
+                    <input type="number" id="totalStudents" min="0" class="w-full border border-gray-300 rounded-md p-2 text-base" required>
                 </div>
                 <div>
-                    <label for="absentStudents" class="block text-gray-700 dark:text-gray-300 mb-1">عدد الطلاب الغائبين</label>
-                    <input type="number" id="absentStudents" min="0" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                    <label for="absentStudents" class="block text-gray-700 mb-1">عدد الطلاب الغائبين</label>
+                    <input type="number" id="absentStudents" min="0" class="w-full border border-gray-300 rounded-md p-2 text-base" required>
                 </div>
                 <div>
-                    <label for="tripDate" class="block text-gray-700 dark:text-gray-300 mb-1">تاريخ الرحلة</label>
-                    <input type="date" id="tripDate" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2 text-base" required>
+                    <label for="tripDate" class="block text-gray-700 mb-1">تاريخ الرحلة</label>
+                    <input type="date" id="tripDate" class="w-full border border-gray-300 rounded-md p-2 text-base" required>
                 </div>
                 <div class="md:col-span-2 lg:col-span-3">
                     <button type="submit" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md mt-2">إضافة الباص</button>
@@ -83,30 +106,30 @@
         </div>
 
         <!-- إحصائيات عامة -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
             <h2 class="text-xl font-semibold mb-2 text-primary">إحصائيات الرحلة</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
-                    <p class="text-blue-800 dark:text-blue-200">عدد الباصات المسجلة: <span id="totalBusesCount" class="font-bold">0</span> من 20</p>
+                <div class="bg-blue-100 p-3 rounded-lg">
+                    <p class="text-blue-800">عدد الباصات المسجلة: <span id="totalBusesCount" class="font-bold">0</span> من 20</p>
                 </div>
-                <div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
-                    <p class="text-green-800 dark:text-green-200">إجمالي الطلاب: <span id="totalStudentsCount" class="font-bold">0</span></p>
+                <div class="bg-green-100 p-3 rounded-lg">
+                    <p class="text-green-800">إجمالي الطلاب: <span id="totalStudentsCount" class="font-bold">0</span></p>
                 </div>
-                <div class="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
-                    <p class="text-red-800 dark:text-red-200">إجمالي الغائبين: <span id="totalAbsentCount" class="font-bold">0</span></p>
+                <div class="bg-red-100 p-3 rounded-lg">
+                    <p class="text-red-800">إجمالي الغائبين: <span id="totalAbsentCount" class="font-bold">0</span></p>
                 </div>
             </div>
         </div>
 
         <!-- جدول الباصات -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+        <div class="bg-white rounded-lg shadow-md p-4">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold text-primary">قائمة الباصات</h2>
                 <div class="flex gap-2">
                     <div class="relative inline-block">
                         <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm">تصدير البيانات</button>
-                        <div id="exportDropdown" class="hidden absolute left-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 overflow-hidden">
-                            <button id="exportExcelBtn" class="w-full text-right px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                        <div id="exportDropdown" class="hidden absolute left-0 mt-1 w-36 bg-white rounded-md shadow-lg z-10 overflow-hidden">
+                            <button id="exportExcelBtn" class="w-full text-right px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
                                 <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="#4CAF50"/>
                                     <path d="M14 2V8H20L14 2Z" fill="#81C784"/>
@@ -116,7 +139,7 @@
                                 </svg>
                                 Excel (.xlsx)
                             </button>
-                            <button id="exportCsvBtn" class="w-full text-right px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                            <button id="exportCsvBtn" class="w-full text-right px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
                                 <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" fill="#607D8B"/>
                                     <path d="M14 2V8H20L14 2Z" fill="#B0BEC5"/>
@@ -135,20 +158,21 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full border-collapse">
                     <thead>
-                        <tr class="bg-gray-100 dark:bg-gray-700">
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">رقم الحافلة</th>
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">اسم الباص</th>
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">اسم المشرفة</th>
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">العدد الكلي</th>
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">عدد الغائبين</th>
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">عدد الحاضرين</th>
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">التاريخ</th>
-                            <th class="p-3 text-right border border-gray-300 dark:border-gray-600">الإجراءات</th>
+                        <tr class="bg-gray-100">
+                            <th class="p-3 text-right border border-gray-300">رقم الحافلة</th>
+                            <th class="p-3 text-right border border-gray-300">اسم السائق</th>
+                            <th class="p-3 text-right border border-gray-300">اسم المشرفة</th>
+                            <th class="p-3 text-right border border-gray-300">المنطقة</th>
+                            <th class="p-3 text-right border border-gray-300">العدد الكلي</th>
+                            <th class="p-3 text-right border border-gray-300">عدد الغائبين</th>
+                            <th class="p-3 text-right border border-gray-300">عدد الحاضرين</th>
+                            <th class="p-3 text-right border border-gray-300">التاريخ</th>
+                            <th class="p-3 text-right border border-gray-300">الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="busTableBody">
                         <tr>
-                            <td colspan="8" class="p-3 text-center border border-gray-300 dark:border-gray-600">لا توجد بيانات متاحة</td>
+                            <td colspan="9" class="p-3 text-center border border-gray-300">لا توجد بيانات متاحة</td>
                         </tr>
                     </tbody>
                 </table>
@@ -167,7 +191,6 @@
             messagingSenderId: "858944555180",
             appId: "1:858944555180:web:ef441b1c930ba7e6a7b709",
             measurementId: "G-9E82PESRHV"
-            
         };
 
         // تهيئة Firebase
@@ -175,7 +198,6 @@
         
         // مرجع قاعدة البيانات
         const database = firebase.database();
-        const busesRef = database.ref('buses');
         
         document.addEventListener('DOMContentLoaded', function() {
             const busForm = document.getElementById('busForm');
@@ -184,14 +206,27 @@
             const totalBusesCount = document.getElementById('totalBusesCount');
             const totalStudentsCount = document.getElementById('totalStudentsCount');
             const totalAbsentCount = document.getElementById('totalAbsentCount');
+            const weekSelector = document.getElementById('weekSelector');
+            const archiveWeekBtn = document.getElementById('archiveWeekBtn');
             const exportBtn = document.getElementById('exportBtn');
+            const importExcelBtn = document.getElementById('importExcelBtn');
+            const excelFileInput = document.getElementById('excelFileInput');
+            const importResult = document.getElementById('importResult');
             const resetBtn = document.getElementById('resetBtn');
             
-            // مؤشر تحميل
+            // كائن للأسبوع الحالي
+            let currentWeekId = '';
+            let currentWeekStart = '';
+            let currentWeekEnd = '';
+            
+            // متغير لتخزين بيانات الباصات
+            let busData = [];
+            
+            // تهيئة مؤشر تحميل
             const loadingSpinner = document.createElement('div');
             loadingSpinner.id = 'loadingSpinner';
             loadingSpinner.className = 'fixed top-0 left-0 w-full h-full bg-black/50 flex items-center justify-center z-50';
-            loadingSpinner.innerHTML = '<div class="bg-white dark:bg-gray-800 p-5 rounded-lg"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-primary mx-auto mb-2"></div><p class="text-gray-700 dark:text-gray-300">جاري التحميل...</p></div>';
+            loadingSpinner.innerHTML = '<div class="bg-white p-5 rounded-lg"><div class="animate-spin rounded-full h-10 w-10 border-t-2 border-primary mx-auto mb-2"></div><p class="text-gray-700">جاري التحميل...</p></div>';
             
             function showLoading() {
                 document.body.appendChild(loadingSpinner);
@@ -201,6 +236,207 @@
                 const spinner = document.getElementById('loadingSpinner');
                 if (spinner) spinner.remove();
             }
+            
+            // الحصول على الأسبوع الحالي
+            function getCurrentWeek() {
+                const now = new Date();
+                const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+                const pastDaysOfYear = (now - firstDayOfYear) / 86400000;
+                const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+                
+                // تحديد بداية ونهاية الأسبوع الحالي
+                const currentDay = now.getDay(); // 0 للأحد، 1 للإثنين، وهكذا
+                const firstDayOfWeek = new Date(now); // بداية الأسبوع (الأحد)
+                const lastDayOfWeek = new Date(now);  // نهاية الأسبوع (السبت)
+                
+                // نحسب عدد الأيام للعودة إلى الأحد (بداية الأسبوع)
+                const diff = currentDay === 0 ? 0 : currentDay;
+                firstDayOfWeek.setDate(now.getDate() - diff);
+                
+                // نحسب عدد الأيام للوصول إلى السبت (نهاية الأسبوع)
+                lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+                
+                // تنسيق التواريخ بتنسيق YYYY-MM-DD
+                const formatDate = (date) => {
+                    return date.toISOString().split('T')[0];
+                };
+                
+                return {
+                    weekId: `${now.getFullYear()}-W${weekNumber}`,
+                    weekNumber: weekNumber,
+                    year: now.getFullYear(),
+                    startDate: formatDate(firstDayOfWeek),
+                    endDate: formatDate(lastDayOfWeek)
+                };
+            }
+            
+            // تحميل الأسابيع المؤرشفة
+            function loadArchivedWeeks() {
+                database.ref('weeks').once('value')
+                    .then(snapshot => {
+                        // إعادة تعيين قائمة الأسابيع
+                        weekSelector.innerHTML = '<option value="current">الأسبوع الحالي</option>';
+                        
+                        // إضافة الأسابيع المؤرشفة
+                        if (snapshot.exists()) {
+                            const weeks = [];
+                            snapshot.forEach(childSnapshot => {
+                                const week = childSnapshot.val();
+                                weeks.push({
+                                    key: childSnapshot.key,
+                                    ...week
+                                });
+                            });
+                            
+                            // ترتيب الأسابيع من الأحدث إلى الأقدم
+                            weeks.sort((a, b) => {
+                                return b.weekId.localeCompare(a.weekId);
+                            });
+                            
+                            // إضافة الأسابيع إلى القائمة المنسدلة
+                            weeks.forEach(week => {
+                                const option = document.createElement('option');
+                                option.value = week.key;
+                                const startDate = new Date(week.startDate).toLocaleDateString('ar-EG');
+                                const endDate = new Date(week.endDate).toLocaleDateString('ar-EG');
+                                option.textContent = `الأسبوع ${week.weekNumber} (${startDate} - ${endDate})`;
+                                weekSelector.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error("خطأ في تحميل الأسابيع المؤرشفة: ", error);
+                    });
+            }
+            
+            // تحديد الأسبوع الحالي والأسابيع المؤرشفة
+            function initializeWeeks() {
+                const currentWeek = getCurrentWeek();
+                currentWeekId = currentWeek.weekId;
+                currentWeekStart = currentWeek.startDate;
+                currentWeekEnd = currentWeek.endDate;
+                
+                // تحميل الأسابيع المؤرشفة
+                loadArchivedWeeks();
+                
+                // تحديث الباصات للأسبوع الحالي
+                loadBusesForCurrentWeek();
+            }
+            
+            // تحميل الباصات للأسبوع الحالي
+            function loadBusesForCurrentWeek() {
+                showLoading();
+                
+                // مرجع للأسبوع الحالي
+                const busesRef = database.ref(`buses/${currentWeekId}`);
+                
+                busesRef.on('value', snapshot => {
+                    busData = [];
+                    if (snapshot.exists()) {
+                        snapshot.forEach(childSnapshot => {
+                            const bus = childSnapshot.val();
+                            bus.key = childSnapshot.key;
+                            busData.push(bus);
+                        });
+                    }
+                    
+                    // ترتيب البيانات حسب رقم الباص
+                    busData.sort((a, b) => parseInt(a.busNumber) - parseInt(b.busNumber));
+                    
+                    updateTable();
+                    updateStats();
+                    updateBusNumberSelect();
+                    hideLoading();
+                });
+            }
+            
+            // تحميل الباصات للأسبوع المحدد
+            function loadBusesForSelectedWeek(weekId) {
+                showLoading();
+                
+                // مرجع للأسبوع المحدد
+                const busesRef = database.ref(`buses/${weekId}`);
+                
+                busesRef.once('value')
+                    .then(snapshot => {
+                        busData = [];
+                        if (snapshot.exists()) {
+                            snapshot.forEach(childSnapshot => {
+                                const bus = childSnapshot.val();
+                                bus.key = childSnapshot.key;
+                                busData.push(bus);
+                            });
+                        }
+                        
+                        // ترتيب البيانات حسب رقم الباص
+                        busData.sort((a, b) => parseInt(a.busNumber) - parseInt(b.busNumber));
+                        
+                        updateTable();
+                        updateStats();
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error("خطأ في تحميل بيانات الأسبوع: ", error);
+                        hideLoading();
+                    });
+            }
+            
+            // أرشفة الأسبوع الحالي
+            archiveWeekBtn.addEventListener('click', function() {
+                if (confirm('هل أنت متأكد من أرشفة الأسبوع الحالي؟ سيتم حفظ البيانات الحالية وبدء أسبوع جديد.')) {
+                    showLoading();
+                    
+                    const currentWeek = getCurrentWeek();
+                    
+                    // إضافة الأسبوع الحالي إلى الأسابيع المؤرشفة
+                    database.ref(`weeks/${currentWeekId}`).set({
+                        weekId: currentWeekId,
+                        weekNumber: currentWeek.weekNumber,
+                        year: currentWeek.year,
+                        startDate: currentWeek.startDate,
+                        endDate: currentWeek.endDate,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    })
+                    .then(() => {
+                        // إعادة تعيين الأسبوع الحالي
+                        initializeWeeks();
+                        hideLoading();
+                        alert('تم أرشفة الأسبوع بنجاح!');
+                    })
+                    .catch(error => {
+                        console.error("خطأ في أرشفة الأسبوع: ", error);
+                        hideLoading();
+                        alert('حدث خطأ أثناء أرشفة الأسبوع. يرجى المحاولة مرة أخرى.');
+                    });
+                }
+            });
+            
+            // تغيير الأسبوع المحدد
+            weekSelector.addEventListener('change', function() {
+                const selectedWeek = this.value;
+                
+                if (selectedWeek === 'current') {
+                    // الأسبوع الحالي
+                    busForm.style.display = 'grid'; // عرض نموذج إضافة باص
+                    archiveWeekBtn.style.display = 'block'; // عرض زر الأرشفة
+                    resetBtn.style.display = 'block'; // عرض زر إعادة التعيين
+                    
+                    // تحديث المتغيرات العالمية
+                    const currentWeek = getCurrentWeek();
+                    currentWeekId = currentWeek.weekId;
+                    
+                    // تحميل الباصات للأسبوع الحالي
+                    loadBusesForCurrentWeek();
+                } else {
+                    // أسبوع مؤرشف
+                    busForm.style.display = 'none'; // إخفاء نموذج إضافة باص
+                    archiveWeekBtn.style.display = 'none'; // إخفاء زر الأرشفة
+                    resetBtn.style.display = 'none'; // إخفاء زر إعادة التعيين
+                    
+                    // تحميل الباصات للأسبوع المحدد
+                    loadBusesForSelectedWeek(selectedWeek);
+                }
+            });
             
             // تهيئة قائمة أرقام الباصات (20 باص)
             for (let i = 1; i <= 20; i++) {
@@ -213,27 +449,6 @@
             // تعيين التاريخ الافتراضي ليكون اليوم
             document.getElementById('tripDate').valueAsDate = new Date();
             
-            // متغير لتخزين بيانات الباصات
-            let busData = [];
-            
-            // استمع للتغييرات في قاعدة البيانات وتحديث الواجهة
-            busesRef.on('value', snapshot => {
-                busData = [];
-                snapshot.forEach(childSnapshot => {
-                    const bus = childSnapshot.val();
-                    bus.key = childSnapshot.key;
-                    busData.push(bus);
-                });
-                
-                // ترتيب البيانات حسب رقم الباص
-                busData.sort((a, b) => parseInt(a.busNumber) - parseInt(b.busNumber));
-                
-                updateTable();
-                updateStats();
-                updateBusNumberSelect();
-                hideLoading();
-            });
-            
             // إضافة باص جديد
             busForm.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -241,14 +456,15 @@
                 
                 const busNumber = busNumberSelect.value;
                 const supervisorName = document.getElementById('supervisorName').value;
-                const busName = document.getElementById('busName').value;
+                const driverName = document.getElementById('driverName').value;
+                const regionName = document.getElementById('regionName').value;
                 const totalStudents = parseInt(document.getElementById('totalStudents').value);
                 const absentStudents = parseInt(document.getElementById('absentStudents').value);
                 const tripDate = document.getElementById('tripDate').value;
                 
-                // التحقق من عدم تكرار رقم الباص
+                // التحقق من عدم تكرار رقم الباص في الأسبوع الحالي
                 if (busData.some(bus => bus.busNumber === busNumber)) {
-                    alert('هذا الرقم مستخدم بالفعل! الرجاء اختيار رقم آخر.');
+                    alert('هذا الرقم مستخدم بالفعل في الأسبوع الحالي! الرجاء اختيار رقم آخر.');
                     hideLoading();
                     return;
                 }
@@ -266,8 +482,9 @@
                 // إضافة الباص الجديد
                 const newBus = {
                     busNumber,
-                    busName,
+                    driverName,
                     supervisorName,
+                    regionName,
                     totalStudents,
                     absentStudents,
                     presentStudents: totalStudents - absentStudents,
@@ -276,8 +493,8 @@
                     timeStamp: firebase.database.ServerValue.TIMESTAMP
                 };
                 
-                // إضافة إلى Firebase
-                busesRef.push(newBus)
+                // إضافة إلى Firebase في مجموعة الأسبوع الحالي
+                database.ref(`buses/${currentWeekId}`).push(newBus)
                     .then(() => {
                         // إعادة تعيين النموذج
                         busForm.reset();
@@ -298,7 +515,7 @@
                     if (confirm('هل أنت متأكد من حذف هذا الباص؟')) {
                         showLoading();
                         const busKey = e.target.dataset.key;
-                        busesRef.child(busKey).remove()
+                        database.ref(`buses/${currentWeekId}/${busKey}`).remove()
                             .then(() => {
                                 hideLoading();
                             })
@@ -310,6 +527,242 @@
                     }
                 }
             });
+            
+            // استيراد بيانات Excel
+            importExcelBtn.addEventListener('click', function() {
+                const file = excelFileInput.files[0];
+                
+                if (!file) {
+                    alert('الرجاء اختيار ملف Excel أولاً');
+                    return;
+                }
+                
+                showLoading();
+                importResult.innerHTML = '';
+                importResult.className = '';
+                importResult.classList.add('mt-3', 'p-3', 'rounded-lg');
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // قراءة أول ورقة في الملف
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        // تحويل البيانات إلى JSON
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        if (jsonData.length < 2) {
+                            importResult.classList.add('bg-red-100', 'text-red-800');
+                            importResult.textContent = 'الملف لا يحتوي على بيانات كافية';
+                            importResult.classList.remove('hidden');
+                            hideLoading();
+                            return;
+                        }
+                        
+                        // التحقق من تطابق العناوين المتوقعة
+                        const headers = jsonData[0];
+                        const requiredHeaders = [
+                            'رقم الحافلة', 'اسم السائق', 'اسم المشرفة', 'اسم المنطقة',
+                            'العدد الكلي للطلاب', 'عدد الطلاب الغائبين', 'التاريخ'
+                        ];
+                        
+                        // التحقق من وجود جميع العناوين المطلوبة
+                        let missingHeaders = [];
+                        for (const header of requiredHeaders) {
+                            if (!headers.includes(header)) {
+                                missingHeaders.push(header);
+                            }
+                        }
+                        
+                        if (missingHeaders.length > 0) {
+                            importResult.classList.add('bg-red-100', 'text-red-800');
+                            importResult.textContent = `الملف لا يحتوي على العناوين المطلوبة: ${missingHeaders.join(', ')}`;
+                            importResult.classList.remove('hidden');
+                            hideLoading();
+                            return;
+                        }
+                        
+                        // إعداد البيانات للاستيراد
+                        const busesToImport = [];
+                        const errors = [];
+                        
+                        for (let i = 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            if (row.length < requiredHeaders.length) continue; // تخطي الصفوف الفارغة
+                            
+                            // الحصول على مؤشرات العمود
+                            const busNumberIdx = headers.indexOf('رقم الحافلة');
+                            const driverNameIdx = headers.indexOf('اسم السائق');
+                            const supervisorNameIdx = headers.indexOf('اسم المشرفة');
+                            const regionNameIdx = headers.indexOf('اسم المنطقة');
+                            const totalStudentsIdx = headers.indexOf('العدد الكلي للطلاب');
+                            const absentStudentsIdx = headers.indexOf('عدد الطلاب الغائبين');
+                            const tripDateIdx = headers.indexOf('التاريخ');
+                            
+                            // استخراج البيانات من الصف
+                            const busNumber = row[busNumberIdx]?.toString();
+                            const driverName = row[driverNameIdx]?.toString();
+                            const supervisorName = row[supervisorNameIdx]?.toString();
+                            const regionName = row[regionNameIdx]?.toString();
+                            const totalStudents = parseInt(row[totalStudentsIdx]);
+                            const absentStudents = parseInt(row[absentStudentsIdx]);
+                            let tripDate = row[tripDateIdx];
+                            
+                            // التحقق من صحة البيانات
+                            if (!busNumber || !driverName || !supervisorName || !regionName || 
+                                isNaN(totalStudents) || isNaN(absentStudents) || !tripDate) {
+                                errors.push(`صف ${i + 1}: بيانات غير صالحة أو مفقودة`);
+                                continue;
+                            }
+                            
+                            // التحقق من أن عدد الغائبين لا يتجاوز العدد الكلي
+                            if (absentStudents > totalStudents) {
+                                errors.push(`صف ${i + 1}: عدد الطلاب الغائبين (${absentStudents}) أكبر من العدد الكلي (${totalStudents})`);
+                                continue;
+                            }
+                            
+                            // معالجة التاريخ
+                            try {
+                                // محاولة تحويل التاريخ إلى تنسيق YYYY-MM-DD
+                                if (typeof tripDate === 'number') {
+                                    // قد يكون التاريخ بتنسيق Excel الرقمي
+                                    const excelDate = XLSX.SSF.parse_date_code(tripDate);
+                                    tripDate = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
+                                } else if (typeof tripDate === 'string') {
+                                    // محاولة تحليل التاريخ كنص
+                                    const dateParts = tripDate.split(/[\/\-\.]/);
+                                    if (dateParts.length === 3) {
+                                        // افتراض أن التنسيق هو DD/MM/YYYY أو DD-MM-YYYY
+                                        const day = parseInt(dateParts[0]);
+                                        const month = parseInt(dateParts[1]);
+                                        const year = parseInt(dateParts[2]);
+                                        
+                                        if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                                            tripDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                        }
+                                    }
+                                }
+                                
+                                // التحقق من صحة التاريخ
+                                const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                                if (!dateRegex.test(tripDate)) {
+                                    errors.push(`صف ${i + 1}: تنسيق التاريخ غير صالح (${tripDate})`);
+                                    continue;
+                                }
+                            } catch (error) {
+                                errors.push(`صف ${i + 1}: خطأ في معالجة التاريخ (${tripDate})`);
+                                continue;
+                            }
+                            
+                            // التحقق من عدم تكرار رقم الباص في الأسبوع الحالي
+                            if (busData.some(bus => bus.busNumber === busNumber)) {
+                                errors.push(`صف ${i + 1}: رقم الحافلة ${busNumber} مستخدم بالفعل في الأسبوع الحالي`);
+                                continue;
+                            }
+                            
+                            // إعداد البيانات لإضافتها
+                            const formattedDate = formatDate(tripDate);
+                            const newBus = {
+                                busNumber,
+                                driverName,
+                                supervisorName,
+                                regionName,
+                                totalStudents,
+                                absentStudents,
+                                presentStudents: totalStudents - absentStudents,
+                                tripDate,
+                                formattedDate,
+                                timeStamp: firebase.database.ServerValue.TIMESTAMP
+                            };
+                            
+                            busesToImport.push(newBus);
+                        }
+                        
+                        // عرض الأخطاء إن وجدت
+                        if (errors.length > 0) {
+                            importResult.classList.add('bg-yellow-100', 'text-yellow-800');
+                            importResult.innerHTML = `<p class="font-bold">تم العثور على بعض الأخطاء:</p><ul class="list-disc list-inside">`;
+                            errors.forEach(error => {
+                                importResult.innerHTML += `<li>${error}</li>`;
+                            });
+                            importResult.innerHTML += `</ul>`;
+                            
+                            if (busesToImport.length > 0) {
+                                importResult.innerHTML += `<p class="mt-2">سيتم استيراد ${busesToImport.length} باص.</p>`;
+                                importResult.innerHTML += `<button id="confirmImport" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-md mt-2">تأكيد الاستيراد</button>`;
+                            }
+                            
+                            importResult.classList.remove('hidden');
+                            
+                            // إضافة معالج الحدث لزر التأكيد
+                            const confirmImportBtn = document.getElementById('confirmImport');
+                            if (confirmImportBtn) {
+                                confirmImportBtn.addEventListener('click', function() {
+                                    importBuses(busesToImport);
+                                });
+                            }
+                            
+                            hideLoading();
+                            return;
+                        }
+                        
+                        // استيراد الباصات إذا لم تكن هناك أخطاء
+                        if (busesToImport.length > 0) {
+                            importBuses(busesToImport);
+                        } else {
+                            importResult.classList.add('bg-red-100', 'text-red-800');
+                            importResult.textContent = 'لا توجد بيانات صالحة للاستيراد';
+                            importResult.classList.remove('hidden');
+                            hideLoading();
+                        }
+                    } catch (error) {
+                        console.error("خطأ في قراءة ملف Excel: ", error);
+                        importResult.classList.add('bg-red-100', 'text-red-800');
+                        importResult.textContent = 'حدث خطأ أثناء قراءة الملف. يرجى التأكد من أن الملف بتنسيق Excel صحيح.';
+                        importResult.classList.remove('hidden');
+                        hideLoading();
+                    }
+                };
+                
+                reader.onerror = function() {
+                    importResult.classList.add('bg-red-100', 'text-red-800');
+                    importResult.textContent = 'حدث خطأ أثناء قراءة الملف.';
+                    importResult.classList.remove('hidden');
+                    hideLoading();
+                };
+                
+                reader.readAsArrayBuffer(file);
+            });
+            
+            // استيراد الباصات إلى Firebase
+            function importBuses(buses) {
+                showLoading();
+                
+                const importPromises = buses.map(bus => {
+                    return database.ref(`buses/${currentWeekId}`).push(bus);
+                });
+                
+                Promise.all(importPromises)
+                    .then(() => {
+                        importResult.className = 'mt-3 p-3 rounded-lg bg-green-100 text-green-800';
+                        importResult.textContent = `تم استيراد ${buses.length} باص بنجاح!`;
+                        importResult.classList.remove('hidden');
+                        excelFileInput.value = ''; // إعادة تعيين حقل الملف
+                        hideLoading();
+                    })
+                    .catch(error => {
+                        console.error("خطأ في استيراد البيانات: ", error);
+                        importResult.className = 'mt-3 p-3 rounded-lg bg-red-100 text-red-800';
+                        importResult.textContent = 'حدث خطأ أثناء استيراد البيانات. يرجى المحاولة مرة أخرى.';
+                        importResult.classList.remove('hidden');
+                        hideLoading();
+                    });
+            }
             
             // تصدير البيانات - القائمة المنسدلة
             const exportDropdown = document.getElementById('exportDropdown');
@@ -343,16 +796,26 @@
                 showLoading();
                 
                 setTimeout(() => {
-                    let csvContent = "رقم الحافلة,اسم الباص,اسم المشرفة,العدد الكلي,عدد الغائبين,عدد الحاضرين,التاريخ\n";
+                    let csvContent = "رقم الحافلة,اسم السائق,اسم المشرفة,المنطقة,العدد الكلي,عدد الغائبين,عدد الحاضرين,التاريخ\n";
                     
                     busData.forEach(bus => {
-                        csvContent += `${bus.busNumber},${bus.busName},${bus.supervisorName},${bus.totalStudents},${bus.absentStudents},${bus.presentStudents},${bus.formattedDate}\n`;
+                        csvContent += `${bus.busNumber},${bus.driverName},${bus.supervisorName},${bus.regionName},${bus.totalStudents},${bus.absentStudents},${bus.presentStudents},${bus.formattedDate}\n`;
                     });
                     
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
-                    link.download = 'بيانات_الرحلة_المدرسية.csv';
+                    
+                    // اسم الملف يتضمن معلومات الأسبوع
+                    let fileName = 'بيانات_الرحلة_المدرسية';
+                    if (weekSelector.value === 'current') {
+                        fileName += '_الأسبوع_الحالي';
+                    } else {
+                        const selectedOption = weekSelector.options[weekSelector.selectedIndex];
+                        fileName += '_' + selectedOption.textContent.replace(/[\s()]/g, '_');
+                    }
+                    
+                    link.download = fileName + '.csv';
                     link.click();
                     
                     hideLoading();
@@ -373,14 +836,15 @@
                     try {
                         // إنشاء مصفوفة البيانات للتصدير
                         const excelData = [
-                            ['رقم الحافلة', 'اسم الباص', 'اسم المشرفة', 'العدد الكلي', 'عدد الغائبين', 'عدد الحاضرين', 'التاريخ']
+                            ['رقم الحافلة', 'اسم السائق', 'اسم المشرفة', 'المنطقة', 'العدد الكلي', 'عدد الغائبين', 'عدد الحاضرين', 'التاريخ']
                         ];
                         
                         busData.forEach(bus => {
                             excelData.push([
                                 bus.busNumber,
-                                bus.busName,
+                                bus.driverName,
                                 bus.supervisorName,
+                                bus.regionName,
                                 parseInt(bus.totalStudents),
                                 parseInt(bus.absentStudents),
                                 parseInt(bus.presentStudents),
@@ -396,29 +860,44 @@
                         const rowStyle = { alignment: { horizontal: 'center' } };
                         
                         // تطبيق أنماط العناوين
-                        ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1'].forEach(cell => {
+                        ['A1', 'B1', 'C1', 'D1', 'E1', 'F1', 'G1', 'H1'].forEach(cell => {
                             if (!ws[cell]) ws[cell] = {};
                             ws[cell].s = headerStyle;
                         });
                         
                         // ضبط عرض الأعمدة
                         const colWidths = [
-                            { wch: 10 }, // رقم الحافلة
-                            { wch: 20 }, // اسم الباص
-                            { wch: 25 }, // اسم المشرفة
-                            { wch: 12 }, // العدد الكلي
-                            { wch: 15 }, // عدد الغائبين
-                            { wch: 15 }, // عدد الحاضرين
-                            { wch: 25 }  // التاريخ
+                            { wch: 10 },  // رقم الحافلة
+                            { wch: 20 },  // اسم السائق
+                            { wch: 25 },  // اسم المشرفة
+                            { wch: 20 },  // المنطقة
+                            { wch: 12 },  // العدد الكلي
+                            { wch: 15 },  // عدد الغائبين
+                            { wch: 15 },  // عدد الحاضرين
+                            { wch: 25 }   // التاريخ
                         ];
                         ws['!cols'] = colWidths;
                         
                         // إنشاء كتاب Excel وإضافة ورقة العمل
                         const wb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(wb, ws, 'بيانات الرحلة المدرسية');
+                        
+                        // اسم الملف يتضمن معلومات الأسبوع
+                        let sheetName = 'بيانات الرحلة المدرسية';
+                        let fileName = 'بيانات_الرحلة_المدرسية';
+                        
+                        if (weekSelector.value === 'current') {
+                            fileName += '_الأسبوع_الحالي';
+                        } else {
+                            const selectedOption = weekSelector.options[weekSelector.selectedIndex];
+                            const weekInfo = selectedOption.textContent;
+                            fileName += '_' + weekInfo.replace(/[\s()]/g, '_');
+                            sheetName = weekInfo;
+                        }
+                        
+                        XLSX.utils.book_append_sheet(wb, ws, sheetName);
                         
                         // تصدير الملف
-                        XLSX.writeFile(wb, 'بيانات_الرحلة_المدرسية.xlsx');
+                        XLSX.writeFile(wb, fileName + '.xlsx');
                         
                         hideLoading();
                     } catch (error) {
@@ -431,9 +910,9 @@
             
             // إعادة تعيين البيانات
             resetBtn.addEventListener('click', function() {
-                if (confirm('هل أنت متأكد من حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء!')) {
+                if (confirm('هل أنت متأكد من حذف جميع بيانات الأسبوع الحالي؟ لا يمكن التراجع عن هذا الإجراء!')) {
                     showLoading();
-                    busesRef.remove()
+                    database.ref(`buses/${currentWeekId}`).remove()
                         .then(() => {
                             hideLoading();
                         })
@@ -448,7 +927,7 @@
             // تحديث جدول الباصات
             function updateTable() {
                 if (busData.length === 0) {
-                    busTableBody.innerHTML = '<tr><td colspan="8" class="p-3 text-center border border-gray-300 dark:border-gray-600">لا توجد بيانات متاحة</td></tr>';
+                    busTableBody.innerHTML = '<tr><td colspan="9" class="p-3 text-center border border-gray-300">لا توجد بيانات متاحة</td></tr>';
                     return;
                 }
                 
@@ -456,18 +935,21 @@
                 
                 busData.forEach(bus => {
                     const row = document.createElement('tr');
-                    row.classList.add('border-b', 'dark:border-gray-700', 'hover:bg-gray-50', 'dark:hover:bg-gray-800/50');
+                    row.classList.add('border-b', 'hover:bg-gray-50');
                     
                     row.innerHTML = `
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.busNumber}</td>
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.busName}</td>
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.supervisorName}</td>
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.totalStudents}</td>
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.absentStudents}</td>
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.presentStudents}</td>
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">${bus.formattedDate || '-'}</td>
-                        <td class="p-3 border border-gray-300 dark:border-gray-600">
-                            <button class="delete-btn bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" data-key="${bus.key}">حذف</button>
+                        <td class="p-3 border border-gray-300">${bus.busNumber}</td>
+                        <td class="p-3 border border-gray-300">${bus.driverName}</td>
+                        <td class="p-3 border border-gray-300">${bus.supervisorName}</td>
+                        <td class="p-3 border border-gray-300">${bus.regionName}</td>
+                        <td class="p-3 border border-gray-300">${bus.totalStudents}</td>
+                        <td class="p-3 border border-gray-300">${bus.absentStudents}</td>
+                        <td class="p-3 border border-gray-300">${bus.presentStudents}</td>
+                        <td class="p-3 border border-gray-300">${bus.formattedDate || '-'}</td>
+                        <td class="p-3 border border-gray-300">
+                            ${weekSelector.value === 'current' ? 
+                                `<button class="delete-btn bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm" data-key="${bus.key}">حذف</button>` : 
+                                '-'}
                         </td>
                     `;
                     
@@ -479,8 +961,8 @@
             function updateStats() {
                 totalBusesCount.textContent = busData.length;
                 
-                const totalStudents = busData.reduce((sum, bus) => sum + parseInt(bus.totalStudents), 0);
-                const totalAbsent = busData.reduce((sum, bus) => sum + parseInt(bus.absentStudents), 0);
+                const totalStudents = busData.reduce((sum, bus) => sum + parseInt(bus.totalStudents || 0), 0);
+                const totalAbsent = busData.reduce((sum, bus) => sum + parseInt(bus.absentStudents || 0), 0);
                 
                 totalStudentsCount.textContent = totalStudents;
                 totalAbsentCount.textContent = totalAbsent;
@@ -514,6 +996,9 @@
                     day: 'numeric'
                 });
             }
+            
+            // تهيئة الأسابيع
+            initializeWeeks();
             
             // عرض مؤشر التحميل عند بدء التطبيق
             showLoading();
